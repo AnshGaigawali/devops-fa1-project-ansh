@@ -1,0 +1,66 @@
+pipeline {
+    agent any
+    
+    environment {
+        BUILD_TAG = "${BUILD_NUMBER}"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out source code...'
+                checkout scm
+            }
+        }
+        
+        stage('Build and Test') {
+            steps {
+                echo 'Building and testing with external Docker script...'
+                bat "jenkins-build.bat ${BUILD_TAG}"
+            }
+        }
+        
+        stage('Deploy to Staging') {
+            steps {
+                echo 'Deploying to staging...'
+                bat """
+                    docker stop staging-app 2>nul || echo "No staging container to stop"
+                    docker rm staging-app 2>nul || echo "No staging container to remove"
+                    docker run -d --name staging-app -p 8081:80 devops-fa1-project-ansh:${BUILD_TAG}
+                    echo "Staging deployed: http://localhost:8081"
+                """
+            }
+        }
+        
+        stage('Deploy to Production') {
+            when {
+                branch 'main'
+            }
+            input {
+                message "Deploy to production?"
+                ok "Deploy"
+            }
+            steps {
+                echo 'Deploying to production...'
+                bat """
+                    docker stop production-app 2>nul || echo "No production container to stop"
+                    docker rm production-app 2>nul || echo "No production container to remove"
+                    docker run -d --name production-app -p 80:80 devops-fa1-project-ansh:${BUILD_TAG}
+                    echo "Production deployed: http://localhost"
+                """
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo '🎉 Pipeline completed successfully!'
+            echo "Application available at:"
+            echo "- Staging: http://localhost:8081"
+            echo "- Production: http://localhost (after approval)"
+        }
+        failure {
+            echo '❌ Pipeline failed!'
+        }
+    }
+}

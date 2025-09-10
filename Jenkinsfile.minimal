@@ -1,0 +1,63 @@
+pipeline {
+    agent any
+    
+    stages {
+        stage('Hello World') {
+            steps {
+                echo 'Hello from Jenkins Pipeline!'
+                echo 'This is the simplest possible pipeline'
+                script {
+                    echo "Build Number: ${BUILD_NUMBER}"
+                    echo "Job Name: ${JOB_NAME}"
+                    echo "Workspace: ${WORKSPACE}"
+                }
+            }
+        }
+        
+        stage('Check Files') {
+            steps {
+                echo 'Checking project files...'
+                script {
+                    echo "Checking for files in workspace..."
+                    try {
+                        def files = ['Dockerfile', 'index.html', 'README.md']
+                        files.each { file ->
+                            if (fileExists(file)) {
+                                echo "✅ Found: ${file}"
+                            } else {
+                                echo "❌ Missing: ${file}"
+                            }
+                        }
+                    } catch (Exception e) {
+                        echo "File check completed with exception: ${e.message}"
+                    }
+                }
+            }
+        }
+        
+        stage('Simulate Work') {
+            steps {
+                echo 'Simulating build work...'
+                script {
+                    for (int i = 1; i <= 5; i++) {
+                        echo "Processing step ${i}/5..."
+                        sleep(1)
+                    }
+                    echo "✅ Work completed successfully!"
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Pipeline finished!'
+        }
+        success {
+            echo '🎉 SUCCESS: Pipeline completed successfully!'
+        }
+        failure {
+            echo '❌ FAILURE: Pipeline failed!'
+        }
+    }
+}
